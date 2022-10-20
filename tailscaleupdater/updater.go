@@ -7,19 +7,23 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 type TailscaleAdvertisementUpdater struct {
 	URL    string
 	routes map[string]struct{}
+	logger logr.Logger
 }
 
 // NewTailscaleAdvertisementUpdater creates an updater with the given URL if
 // a GET request to the root path returns StatusOK
-func NewTailscaleAdvertisementUpdater(url string) (*TailscaleAdvertisementUpdater, error) {
+func NewTailscaleAdvertisementUpdater(namespace, url string) (*TailscaleAdvertisementUpdater, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Error querying Tailscale API at %s: %v", url, err)
@@ -31,6 +35,7 @@ func NewTailscaleAdvertisementUpdater(url string) (*TailscaleAdvertisementUpdate
 	return &TailscaleAdvertisementUpdater{
 		URL:    url,
 		routes: map[string]struct{}{},
+		logger: ctrl.Log.WithName("tailscaleUpdater").WithValues("API URL", url, "namespace", namespace),
 	}, nil
 }
 
@@ -43,32 +48,38 @@ func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.
 	handler.AddFunc = func(obj interface{}) {
 		svc, ok := obj.(*corev1.Service)
 		if !ok {
-			fmt.Println("Not a service?")
+			u := obj.(*unstructured.Unstructured)
+			t.logger.V(1).Info("add: got non-service object", "kind", u.GetObjectKind())
 			return
 		}
-		fmt.Println("discovered service", svc.Name, svc.Spec.ClusterIP)
-		err := t.ensureRouteForIP(svc.Spec.ClusterIP)
+		svcIP := svc.Spec.ClusterIP
+		t.logger.Info("discovered service", "name", svc.Name, "ip", svcIP)
+		err := t.ensureRouteForIP(svcIP)
 		if err != nil {
-			fmt.Println("error adding route for svc:", err)
+			t.logger.Error(err, "adding route for service")
 		}
 	}
 
 	handler.UpdateFunc = func(old, new interface{}) {
 		oldsvc, ok := old.(*corev1.Service)
 		if !ok {
-			fmt.Println("Not a service?")
+			u := old.(*unstructured.Unstructured)
+			t.logger.V(1).Info("update: got old non-service", "kind", u.GetObjectKind())
 			return
 		}
 		newsvc, ok := new.(*corev1.Service)
 		if !ok {
-			fmt.Println("Not a service?")
+			u := new.(*unstructured.Unstructured)
+			t.logger.V(1).Info("update: got new non-service", "kind", u.GetObjectKind())
 			return
 		}
 		if oldsvc.Spec.ClusterIP != newsvc.Spec.ClusterIP {
-			fmt.Println("ip updated for service", oldsvc.Name)
-			err := t.updateRoute(oldsvc.Spec.ClusterIP, newsvc.Spec.ClusterIP)
+			oldIP := oldsvc.Spec.ClusterIP
+			newIP := newsvc.Spec.ClusterIP
+			t.logger.Info("ip updated for service", "name", oldsvc.Name, "old ip", oldIP, "new ip", newIP)
+			err := t.updateRoute(oldIP, newIP)
 			if err != nil {
-				fmt.Println("error updating route for svc:", err)
+				t.logger.Error(err, "updating route for service")
 			}
 		}
 	}
@@ -76,13 +87,15 @@ func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.
 	handler.DeleteFunc = func(obj interface{}) {
 		svc, ok := obj.(*corev1.Service)
 		if !ok {
-			fmt.Println("Not a service?")
+			u := obj.(*unstructured.Unstructured)
+			t.logger.V(1).Info("delete: non-service object", "kind", u.GetObjectKind())
 			return
 		}
-		fmt.Println("service", svc.Name, "removed")
-		err := t.removeRouteForIP(svc.Spec.ClusterIP)
+		svcIP := svc.Spec.ClusterIP
+		t.logger.Info("service removed", "name", svc.Name, "ip", svcIP)
+		err := t.removeRouteForIP(svcIP)
 		if err != nil {
-			fmt.Println("error removing route for svc:", err)
+			t.logger.Error(err, "removing route for service")
 		}
 	}
 	servicesInformer.AddEventHandler(handler)
@@ -128,7 +141,7 @@ func (t *TailscaleAdvertisementUpdater) addRoute(ip string) bool {
 	if _, ok := t.routes[new_route]; ok {
 		return false
 	}
-	fmt.Println("Adding route", new_route)
+	t.logger.Info("adding", "route", new_route)
 	t.routes[new_route] = struct{}{}
 	return true
 }
@@ -138,7 +151,7 @@ func (t *TailscaleAdvertisementUpdater) addRoute(ip string) bool {
 func (t *TailscaleAdvertisementUpdater) removeRoute(ip string) bool {
 	route := ip + "/32"
 	if _, ok := t.routes[route]; ok {
-		fmt.Println("Removing route", route)
+		t.logger.Info("removing", "route", route)
 		delete(t.routes, route)
 		return true
 	}

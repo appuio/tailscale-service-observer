@@ -1,17 +1,16 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"flag"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/appuio/tailscale-service-observer/tailscaleupdater"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var (
@@ -20,8 +19,7 @@ var (
 	commit  = "-dirty-"
 	date    = time.Now().Format("2006-01-02")
 
-	appName     = "tailscale-service-observer"
-	appLongName = "A tool which watches Kubernetes services and updates Tailscale route advertisements through the Tailscale client's HTTP API"
+	appName = "tailscale-service-observer"
 )
 
 // createClient creates a new Kubernetes client either from the current
@@ -44,48 +42,38 @@ func createClient() (*kubernetes.Clientset, error) {
 }
 
 func main() {
-	// TODO(sg): setup logging
-	ctx, cancelFunc := context.WithCancel(context.Background())
-
-	// setup exit on SIGTERM, SIGINT
-	exitSignal := make(chan os.Signal)
-	// setup stop channel for K8s informers
-	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		var signum = -1
-
-		receivedSignal := <-exitSignal
-
-		if sysSignal, ok := receivedSignal.(syscall.Signal); ok {
-			signum = int(sysSignal)
-		}
-
-		fmt.Printf("Received signal %d (%s)\n", signum, receivedSignal.String())
-
-		cancelFunc()
-	}()
-
-	client, err := createClient()
-	if err != nil {
-		cancelFunc()
-		fmt.Println("Error setting up client:", err)
-		os.Exit(1)
+	// use controller-runtime to setup logging and context
+	opts := zap.Options{
+		Development: false,
 	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	setupLog := ctrl.Log.WithName("setup")
 
 	targetNamespace, ok := os.LookupEnv("TARGET_NAMESPACE")
 	if !ok {
-		fmt.Println("Unable to read target namespace from environment ($TARGET_NAMESPACE)")
+		setupLog.Info("Unable to read target namespace from environment ($TARGET_NAMESPACE)")
+		os.Exit(1)
+	}
+	tsApiURL, ok := os.LookupEnv("TAILSCALE_API_URL")
+	if !ok {
+		setupLog.Info("Unable to read Tailscale client API URL from environment ($TAILSCALE_API_URL)")
 		os.Exit(1)
 	}
 
-	tsApiURL, ok := os.LookupEnv("TAILSCALE_API_URL")
-	if !ok {
-		fmt.Println("Unable to read Tailscale client API URL from environment ($TAILSCALE_API_URL)")
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctx := ctrl.SetupSignalHandler()
+
+	client, err := createClient()
+	if err != nil {
+		setupLog.Error(err, "setting up Kubernetes client")
 		os.Exit(1)
 	}
-	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(tsApiURL)
+
+	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(targetNamespace, tsApiURL)
 	if err != nil {
-		fmt.Println("Error while creating Tailscale updater:", err)
+		setupLog.Error(err, "while creating Tailscale updater")
 		os.Exit(1)
 	}
 

@@ -20,6 +20,8 @@ var (
 	date    = time.Now().Format("2006-01-02")
 
 	appName = "tailscale-service-observer"
+
+	DefaultTailscaleApiURL = "http://localhost:8088"
 )
 
 // createClient creates a new Kubernetes client either from the current
@@ -56,10 +58,10 @@ func main() {
 		setupLog.Info("Unable to read target namespace from environment ($TARGET_NAMESPACE)")
 		os.Exit(1)
 	}
-	tsApiURL, ok := os.LookupEnv("TAILSCALE_API_URL")
+	var tsApiURL string
+	tsApiURL, ok = os.LookupEnv("TAILSCALE_API_URL")
 	if !ok {
-		setupLog.Info("Unable to read Tailscale client API URL from environment ($TAILSCALE_API_URL)")
-		os.Exit(1)
+		tsApiURL = DefaultTailscaleApiURL
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))

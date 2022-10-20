@@ -32,7 +32,7 @@ test: test-go ## All-in-one test
 
 .PHONY: test-go
 test-go: ## Run unit tests against code
-	go test -race -coverprofile cover.out -covermode atomic ./...
+	go test -v -race -coverprofile cover.out -covermode atomic ./...
 
 .PHONY: fmt
 fmt: ## Run 'go fmt' against code

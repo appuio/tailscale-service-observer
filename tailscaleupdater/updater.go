@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -44,63 +43,65 @@ func NewTailscaleAdvertisementUpdater(namespace, url string) (*TailscaleAdvertis
 func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.SharedInformerFactory) cache.SharedIndexInformer {
 	servicesInformer := informerFactory.Core().V1().Services().Informer()
 
-	var handler cache.ResourceEventHandlerFuncs
-	handler.AddFunc = func(obj interface{}) {
-		svc, ok := obj.(*corev1.Service)
-		if !ok {
-			u := obj.(*unstructured.Unstructured)
-			t.logger.V(1).Info("add: got non-service object", "kind", u.GetObjectKind())
-			return
-		}
-		svcIP := svc.Spec.ClusterIP
-		t.logger.Info("discovered service", "name", svc.Name, "ip", svcIP)
-		err := t.ensureRouteForIP(svcIP)
-		if err != nil {
-			t.logger.Error(err, "adding route for service")
-		}
+	handler := cache.ResourceEventHandlerFuncs{
+		AddFunc:    t.informerAddHandler,
+		UpdateFunc: t.informerUpdateHandler,
+		DeleteFunc: t.informerDeleteHandler,
 	}
 
-	handler.UpdateFunc = func(old, new interface{}) {
-		oldsvc, ok := old.(*corev1.Service)
-		if !ok {
-			u := old.(*unstructured.Unstructured)
-			t.logger.V(1).Info("update: got old non-service", "kind", u.GetObjectKind())
-			return
-		}
-		newsvc, ok := new.(*corev1.Service)
-		if !ok {
-			u := new.(*unstructured.Unstructured)
-			t.logger.V(1).Info("update: got new non-service", "kind", u.GetObjectKind())
-			return
-		}
-		if oldsvc.Spec.ClusterIP != newsvc.Spec.ClusterIP {
-			oldIP := oldsvc.Spec.ClusterIP
-			newIP := newsvc.Spec.ClusterIP
-			t.logger.Info("ip updated for service", "name", oldsvc.Name, "old ip", oldIP, "new ip", newIP)
-			err := t.updateRoute(oldIP, newIP)
-			if err != nil {
-				t.logger.Error(err, "updating route for service")
-			}
-		}
-	}
-
-	handler.DeleteFunc = func(obj interface{}) {
-		svc, ok := obj.(*corev1.Service)
-		if !ok {
-			u := obj.(*unstructured.Unstructured)
-			t.logger.V(1).Info("delete: non-service object", "kind", u.GetObjectKind())
-			return
-		}
-		svcIP := svc.Spec.ClusterIP
-		t.logger.Info("service removed", "name", svc.Name, "ip", svcIP)
-		err := t.removeRouteForIP(svcIP)
-		if err != nil {
-			t.logger.Error(err, "removing route for service")
-		}
-	}
 	servicesInformer.AddEventHandler(handler)
 
 	return servicesInformer
+}
+
+func (t *TailscaleAdvertisementUpdater) informerAddHandler(obj interface{}) {
+	svc, ok := obj.(*corev1.Service)
+	if !ok {
+		t.logger.V(1).Info("add: got non-service object")
+		return
+	}
+	svcIP := svc.Spec.ClusterIP
+	t.logger.Info("discovered service", "name", svc.Name, "ip", svcIP)
+	err := t.ensureRouteForIP(svcIP)
+	if err != nil {
+		t.logger.Error(err, "adding route for service")
+	}
+}
+
+func (t *TailscaleAdvertisementUpdater) informerUpdateHandler(old, new interface{}) {
+	oldsvc, ok := old.(*corev1.Service)
+	if !ok {
+		t.logger.V(1).Info("update: got old non-service")
+		return
+	}
+	newsvc, ok := new.(*corev1.Service)
+	if !ok {
+		t.logger.V(1).Info("update: got new non-service")
+		return
+	}
+	if oldsvc.Spec.ClusterIP != newsvc.Spec.ClusterIP {
+		oldIP := oldsvc.Spec.ClusterIP
+		newIP := newsvc.Spec.ClusterIP
+		t.logger.Info("ip updated for service", "name", oldsvc.Name, "old ip", oldIP, "new ip", newIP)
+		err := t.updateRoute(oldIP, newIP)
+		if err != nil {
+			t.logger.Error(err, "updating route for service")
+		}
+	}
+}
+
+func (t *TailscaleAdvertisementUpdater) informerDeleteHandler(obj interface{}) {
+	svc, ok := obj.(*corev1.Service)
+	if !ok {
+		t.logger.V(1).Info("delete: non-service object")
+		return
+	}
+	svcIP := svc.Spec.ClusterIP
+	t.logger.Info("service removed", "name", svc.Name, "ip", svcIP)
+	err := t.removeRouteForIP(svcIP)
+	if err != nil {
+		t.logger.Error(err, "removing route for service")
+	}
 }
 
 // ensureRouteForIP registers a /32 route for the provided ip if it doesn't

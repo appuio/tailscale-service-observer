@@ -11,6 +11,12 @@
 [releases]: https://github.com/vshn/go-bootstrap/releases
 [codeclimate]: https://codeclimate.com/github/vshn/go-bootstrap
 
-Tailscale service observer is a Go tool which watches Kubernetes services in a
-single namespace and updates the advertised routes of a Tailscale client over
-the client's HTTP API (`tailscale web`).
+Tailscale service observer is a Go tool which watches Kubernetes services in a single namespace and updates the advertised routes of a Tailscale client over the client's HTTP API (`tailscale web`).
+
+## Configuration
+
+The observer expects to run in a context with a working Kubernetes configuration (either via kubeconfig file or in-cluster).
+
+The environment variable `TARGET_NAMESPACE` must be set to the namespace in which the observer should watch services.
+The environment variable `TAILSCALE_API_URL` can be used to provide a custom URL for the Tailscale client's HTTP API.
+By default, the observer expects the API to be reachable at `http://localhost:8088`.

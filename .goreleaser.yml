@@ -22,7 +22,6 @@ snapshot:
   name_template: "{{ incpatch .Version }}-snapshot"
 
 dockers:
-  # TODO: Adjust image locations
 - goarch: amd64
   use: buildx
   build_flag_templates:
@@ -38,8 +37,6 @@ dockers:
   - "{{ .Env.REGISTRY }}/{{ .Env.IMAGE_NAME }}:v{{ .Version }}-arm64"
 
 docker_manifests:
-  # TODO: Adjust image locations
-
   ## ghcr.io
   # For prereleases, updating `latest` does not make sense.
   # Only the image for the exact version should be pushed.

@@ -45,6 +45,18 @@ func createClient() (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(config)
 }
 
+func parseNamespaces(raw string) []string {
+	parts := strings.Split(raw, ",")
+	targetNamespaces := []string{}
+	for _, ns := range parts {
+		trimmed := strings.Trim(ns, " ")
+		if trimmed != "" {
+			targetNamespaces = append(targetNamespaces, trimmed)
+		}
+	}
+	return targetNamespaces
+}
+
 func main() {
 	// use controller-runtime to setup logging and context
 	opts := zap.Options{
@@ -60,7 +72,7 @@ func main() {
 		setupLog.Error(fmt.Errorf("TARGET_NAMESPACE not set"), "Unable to read target namespace from environment ($TARGET_NAMESPACE)")
 		os.Exit(1)
 	}
-	targetNamespaces := strings.Split(rawTargetNamespace, ",")
+	targetNamespaces := parseNamespaces(rawTargetNamespace)
 
 	var apiURL string
 	apiURL, ok = os.LookupEnv("TAILSCALE_API_URL")

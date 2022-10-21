@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"net/netip"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/appuio/tailscale-service-observer/tailscaleupdater"
+	"github.com/go-logr/logr"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -45,16 +46,41 @@ func createClient() (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(config)
 }
 
-func parseNamespaces(raw string) []string {
+// parseEnv parses comma-separated values from an env variable
+func parseEnv(raw string) []string {
 	parts := strings.Split(raw, ",")
-	targetNamespaces := []string{}
+	parsed := []string{}
 	for _, ns := range parts {
 		trimmed := strings.Trim(ns, " ")
 		if trimmed != "" {
-			targetNamespaces = append(targetNamespaces, trimmed)
+			parsed = append(parsed, trimmed)
 		}
 	}
-	return targetNamespaces
+	return parsed
+}
+
+func advertiseAdditionalRoutes(l logr.Logger, t *tailscaleupdater.TailscaleAdvertisementUpdater, rawRoutes string) {
+	for _, rspec := range parseEnv(rawRoutes) {
+		r, err := netip.ParsePrefix(rspec)
+		if err != nil {
+			a, err2 := netip.ParseAddr(rspec)
+			if err2 == nil {
+				r2, err2 := a.Prefix(a.BitLen())
+				if err2 != nil {
+					l.Error(err, "converting bare IP to prefix")
+				}
+				r = r2
+				err = err2
+			}
+		}
+		if err != nil {
+			l.Info("Failed to parse additional route, ignoring", "value", rspec)
+			continue
+		}
+		if err := t.AddRoute(r.String()); err != nil {
+			l.Error(err, "adding additional route", "route", r.String())
+		}
+	}
 }
 
 func main() {
@@ -65,23 +91,28 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctx := ctrl.SetupSignalHandler()
 	setupLog := ctrl.Log.WithName("setup")
 
 	rawTargetNamespace, ok := os.LookupEnv("TARGET_NAMESPACE")
 	if !ok {
-		setupLog.Error(fmt.Errorf("TARGET_NAMESPACE not set"), "Unable to read target namespace from environment ($TARGET_NAMESPACE)")
+		setupLog.Info("Unable to read target namespace from environment ($TARGET_NAMESPACE)")
 		os.Exit(1)
 	}
-	targetNamespaces := parseNamespaces(rawTargetNamespace)
+	targetNamespaces := parseEnv(rawTargetNamespace)
 
 	var tsApiURL string
 	tsApiURL, ok = os.LookupEnv("TAILSCALE_API_URL")
 	if !ok {
 		tsApiURL = DefaultTailscaleApiURL
 	}
+	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(targetNamespaces, tsApiURL)
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	ctx := ctrl.SetupSignalHandler()
+	additionalRoutes, ok := os.LookupEnv("OBSERVER_ADDITIONAL_ROUTES")
+	if ok {
+		advertiseAdditionalRoutes(setupLog, tsUpdater, additionalRoutes)
+	}
 
 	client, err := createClient()
 	if err != nil {
@@ -89,7 +120,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(targetNamespaces, tsApiURL)
 	if err != nil {
 		setupLog.Error(err, "while creating Tailscale updater")
 		os.Exit(1)

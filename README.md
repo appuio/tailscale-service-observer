@@ -7,9 +7,9 @@
 [![Coverage](https://img.shields.io/codeclimate/coverage/appuio/tailscale-service-observer)][codeclimate]
 [![GitHub downloads](https://img.shields.io/github/downloads/appuio/tailscale-service-observer/total)][releases]
 
-[build]: https://github.com/vshn/go-bootstrap/actions?query=workflow%3ATest
-[releases]: https://github.com/vshn/go-bootstrap/releases
-[codeclimate]: https://codeclimate.com/github/vshn/go-bootstrap
+[build]: https://github.com/appuio/tailscale-service-observer/actions?query=workflow%3ATest
+[releases]: https://github.com/appuio/tailscale-service-observer/releases
+[codeclimate]: https://codeclimate.com/github/appuio/tailscale-service-observer
 
 Tailscale service observer is a Go tool which watches Kubernetes services in a single namespace and updates the advertised routes of a Tailscale client over the client's HTTP API (`tailscale web`).
 

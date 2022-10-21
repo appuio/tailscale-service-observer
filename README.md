@@ -20,3 +20,5 @@ The observer expects to run in a context with a working Kubernetes configuration
 The environment variable `TARGET_NAMESPACE` must be set to the namespace in which the observer should watch services.
 The environment variable `TAILSCALE_API_URL` can be used to provide a custom URL for the Tailscale client's HTTP API.
 By default, the observer expects the API to be reachable at `http://localhost:8088`.
+
+See the [subnet-router.yaml](./examples/subnet-router.yaml) for an example deployment.

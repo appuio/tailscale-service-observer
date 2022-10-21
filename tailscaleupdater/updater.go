@@ -22,9 +22,9 @@ type TailscaleAdvertisementUpdater struct {
 	logger logr.Logger
 }
 
-// NewTailscaleAdvertisementUpdater creates an updater with the given URL if
-// a GET request to the root path returns StatusOK
-func NewTailscaleAdvertisementUpdater(namespaces []string, url string) (*TailscaleAdvertisementUpdater, error) {
+// New creates a new updater with the given URL if a GET request to the root
+// path returns StatusOK
+func New(namespaces []string, url string) (*TailscaleAdvertisementUpdater, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Error querying Tailscale API at %s: %v", url, err)
@@ -38,6 +38,16 @@ func NewTailscaleAdvertisementUpdater(namespaces []string, url string) (*Tailsca
 		routes: map[string]struct{}{},
 		logger: ctrl.Log.WithName("tailscaleUpdater").WithValues("API URL", url, "namespaces", strings.Join(namespaces, ",")),
 	}, nil
+}
+
+// NewUnchecked creates a new updater without validating the provided
+// configuration. Primarily intended for tests
+func NewUnchecked(namespaces []string, url string, l logr.Logger) *TailscaleAdvertisementUpdater {
+	return &TailscaleAdvertisementUpdater{
+		URL:    url,
+		routes: map[string]struct{}{},
+		logger: l,
+	}
 }
 
 // SetupInformer creates a services informer on the given informer factory,
@@ -54,6 +64,17 @@ func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.
 	servicesInformer.AddEventHandler(handler)
 
 	return servicesInformer
+}
+
+func (t *TailscaleAdvertisementUpdater) AddRoute(route string) error {
+	if t.addRoute(route) {
+		return t.post()
+	}
+	return nil
+}
+
+func (t *TailscaleAdvertisementUpdater) GetRoutes() map[string]struct{} {
+	return t.routes
 }
 
 func (t *TailscaleAdvertisementUpdater) informerAddHandler(obj interface{}) {
@@ -109,7 +130,7 @@ func (t *TailscaleAdvertisementUpdater) informerDeleteHandler(obj interface{}) {
 // ensureRouteForIP registers a /32 route for the provided ip if it doesn't
 // exist in the updater, and posts the new advertisments to the tailscale API.
 func (t *TailscaleAdvertisementUpdater) ensureRouteForIP(ip string) error {
-	if t.addRoute(ip) {
+	if t.addRouteForIP(ip) {
 		return t.post()
 	}
 	return nil
@@ -130,22 +151,28 @@ func (t *TailscaleAdvertisementUpdater) removeRouteForIP(ip string) error {
 // advertisements if the internal state changed
 func (t *TailscaleAdvertisementUpdater) updateRoute(oldip string, newip string) error {
 	removed := t.removeRoute(oldip)
-	added := t.addRoute(newip)
+	added := t.addRouteForIP(newip)
 	if removed || added {
 		return t.post()
 	}
 	return nil
 }
 
-// addRoute adds route for ip to internal state, returns true if
+// addRouteForIP adds route for ip to internal state, returns true if
 // advertisements need to be updated
-func (t *TailscaleAdvertisementUpdater) addRoute(ip string) bool {
+func (t *TailscaleAdvertisementUpdater) addRouteForIP(ip string) bool {
 	newRoute := ip + "/32"
-	if _, ok := t.routes[newRoute]; ok {
+	return t.addRoute(newRoute)
+}
+
+// addRoute adds a route to the internal state, returns true if
+// advertisements need to be updated
+func (t *TailscaleAdvertisementUpdater) addRoute(route string) bool {
+	if _, ok := t.routes[route]; ok {
 		return false
 	}
-	t.logger.Info("adding", "route", newRoute)
-	t.routes[newRoute] = struct{}{}
+	t.logger.Info("adding", "route", route)
+	t.routes[route] = struct{}{}
 	return true
 }
 

@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/appuio/tailscale-service-observer/tailscaleupdater"
@@ -53,11 +55,13 @@ func main() {
 
 	setupLog := ctrl.Log.WithName("setup")
 
-	targetNamespace, ok := os.LookupEnv("TARGET_NAMESPACE")
+	rawTargetNamespace, ok := os.LookupEnv("TARGET_NAMESPACE")
 	if !ok {
-		setupLog.Info("Unable to read target namespace from environment ($TARGET_NAMESPACE)")
+		setupLog.Error(fmt.Errorf("TARGET_NAMESPACE not set"), "Unable to read target namespace from environment ($TARGET_NAMESPACE)")
 		os.Exit(1)
 	}
+	targetNamespaces := strings.Split(rawTargetNamespace, ",")
+
 	var apiURL string
 	apiURL, ok = os.LookupEnv("TAILSCALE_API_URL")
 	if !ok {
@@ -73,18 +77,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(targetNamespace, apiURL)
+	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(targetNamespaces, apiURL)
 	if err != nil {
 		setupLog.Error(err, "while creating Tailscale updater")
 		os.Exit(1)
 	}
 
-	factory := informers.NewSharedInformerFactoryWithOptions(client, 10*time.Minute, informers.WithNamespace(targetNamespace))
-	_ = tsUpdater.SetupInformer(factory)
+	for _, ns := range targetNamespaces {
+		factory := informers.NewSharedInformerFactoryWithOptions(client, 10*time.Minute, informers.WithNamespace(ns))
+		_ = tsUpdater.SetupInformer(factory)
 
-	// start informers
-	factory.Start(ctx.Done()) // runs in background
-	factory.WaitForCacheSync(ctx.Done())
+		// start informers
+		factory.Start(ctx.Done()) // runs in background
+		factory.WaitForCacheSync(ctx.Done())
+	}
 
 	<-ctx.Done()
 }

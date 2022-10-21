@@ -24,7 +24,7 @@ type TailscaleAdvertisementUpdater struct {
 
 // NewTailscaleAdvertisementUpdater creates an updater with the given URL if
 // a GET request to the root path returns StatusOK
-func NewTailscaleAdvertisementUpdater(namespace, url string) (*TailscaleAdvertisementUpdater, error) {
+func NewTailscaleAdvertisementUpdater(namespaces []string, url string) (*TailscaleAdvertisementUpdater, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Error querying Tailscale API at %s: %v", url, err)
@@ -36,7 +36,7 @@ func NewTailscaleAdvertisementUpdater(namespace, url string) (*TailscaleAdvertis
 	return &TailscaleAdvertisementUpdater{
 		URL:    url,
 		routes: map[string]struct{}{},
-		logger: ctrl.Log.WithName("tailscaleUpdater").WithValues("API URL", url, "namespace", namespace),
+		logger: ctrl.Log.WithName("tailscaleUpdater").WithValues("API URL", url, "namespaces", strings.Join(namespaces, ",")),
 	}, nil
 }
 

@@ -18,13 +18,13 @@ import (
 func Test_NewTailscaleAdvertisementUpdater(t *testing.T) {
 	url := tsAPIServer()
 
-	tsUpdater, err := NewTailscaleAdvertisementUpdater("foo", url)
+	tsUpdater, err := NewTailscaleAdvertisementUpdater([]string{"foo"}, url)
 	assert.NoError(t, err)
 	assert.Equal(t, url, tsUpdater.URL)
 }
 
 func Test_NewTailscaleAdvertisementUpdater_NoService(t *testing.T) {
-	tsUpdater, err := NewTailscaleAdvertisementUpdater("foo", "")
+	tsUpdater, err := NewTailscaleAdvertisementUpdater([]string{"foo"}, "")
 	assert.Error(t, err)
 	assert.Nil(t, tsUpdater)
 }

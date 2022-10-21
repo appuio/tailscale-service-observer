@@ -1,0 +1,14 @@
+[
+  {
+    "op": "remove",
+    "path": "/spec/template/spec/containers/2/env/0"
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/2/env/0",
+    "value": {
+      "name": "TARGET_NAMESPACE",
+      "value": "hackday-tailscale,hackday-tailscale-2"
+    }
+  }
+]

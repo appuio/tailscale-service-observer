@@ -21,5 +21,9 @@ The environment variable `TARGET_NAMESPACE` must be set to the namespace(s) in w
 You can specify multiple namespaces separated by commas.
 The environment variable `TAILSCALE_API_URL` can be used to provide a custom URL for the Tailscale client's HTTP API.
 By default, the observer expects the API to be reachable at `http://localhost:8088`.
+The environment variable `OBSERVER_ADDITIONAL_ROUTES` can be used to advertise additional routes.
+You can specify multiple routes separated by commas.
+Entries which can be parsed as an IP address will be advertised as a `<ip-address>/32` route.
+Entries which can be parsed as a CIDR prefix will be advertised as that prefix route.
 
 See the [subnet-router.yaml](./examples/subnet-router.yaml) for an example deployment.

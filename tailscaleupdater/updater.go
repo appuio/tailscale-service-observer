@@ -66,6 +66,8 @@ func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.
 	return servicesInformer
 }
 
+// AddRoute adds the provided route to the internal state and updates the
+// advertised routes in the Tailscale client if necesseary.
 func (t *TailscaleAdvertisementUpdater) AddRoute(route string) error {
 	if t.addRoute(route) {
 		return t.post()
@@ -73,6 +75,7 @@ func (t *TailscaleAdvertisementUpdater) AddRoute(route string) error {
 	return nil
 }
 
+// GetRoutes returns the currently registered routes
 func (t *TailscaleAdvertisementUpdater) GetRoutes() map[string]struct{} {
 	return t.routes
 }

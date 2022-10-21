@@ -22,4 +22,4 @@ You can specify multiple namespaces separated by commas.
 The environment variable `TAILSCALE_API_URL` can be used to provide a custom URL for the Tailscale client's HTTP API.
 By default, the observer expects the API to be reachable at `http://localhost:8088`.
 
-See the [subnet-router.yaml](./examples/subnet-router.yaml) for an example deployment.
+See the [examples](./examples/) for Kubernetes manifests to get started.

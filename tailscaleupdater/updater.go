@@ -40,6 +40,16 @@ func New(namespaces []string, url string) (*TailscaleAdvertisementUpdater, error
 	}, nil
 }
 
+// NewUnchecked creates a new updater without validating the provided
+// configuration. Primarily intended for tests
+func NewUnchecked(namespaces []string, url string, l logr.Logger) *TailscaleAdvertisementUpdater {
+	return &TailscaleAdvertisementUpdater{
+		URL:    url,
+		routes: map[string]struct{}{},
+		logger: l,
+	}
+}
+
 // SetupInformer creates a services informer on the given informer factory,
 // and sets up a handler which updates the Tailscale route advertisements
 func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.SharedInformerFactory) cache.SharedIndexInformer {
@@ -61,6 +71,10 @@ func (t *TailscaleAdvertisementUpdater) AddRoute(route string) error {
 		return t.post()
 	}
 	return nil
+}
+
+func (t *TailscaleAdvertisementUpdater) GetRoutes() map[string]struct{} {
+	return t.routes
 }
 
 func (t *TailscaleAdvertisementUpdater) informerAddHandler(obj interface{}) {

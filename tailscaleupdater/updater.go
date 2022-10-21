@@ -22,9 +22,9 @@ type TailscaleAdvertisementUpdater struct {
 	logger logr.Logger
 }
 
-// NewTailscaleAdvertisementUpdater creates an updater with the given URL if
-// a GET request to the root path returns StatusOK
-func NewTailscaleAdvertisementUpdater(namespaces []string, url string) (*TailscaleAdvertisementUpdater, error) {
+// New creates a new updater with the given URL if a GET request to the root
+// path returns StatusOK
+func New(namespaces []string, url string) (*TailscaleAdvertisementUpdater, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Error querying Tailscale API at %s: %v", url, err)

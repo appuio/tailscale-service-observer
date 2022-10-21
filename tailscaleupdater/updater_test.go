@@ -15,16 +15,16 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func Test_NewTailscaleAdvertisementUpdater(t *testing.T) {
+func Test_New(t *testing.T) {
 	url := tsAPIServer()
 
-	tsUpdater, err := NewTailscaleAdvertisementUpdater([]string{"foo"}, url)
+	tsUpdater, err := New([]string{"foo"}, url)
 	assert.NoError(t, err)
 	assert.Equal(t, url, tsUpdater.URL)
 }
 
-func Test_NewTailscaleAdvertisementUpdater_NoService(t *testing.T) {
-	tsUpdater, err := NewTailscaleAdvertisementUpdater([]string{"foo"}, "")
+func Test_New_NoService(t *testing.T) {
+	tsUpdater, err := New([]string{"foo"}, "")
 	assert.Error(t, err)
 	assert.Nil(t, tsUpdater)
 }

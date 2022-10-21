@@ -107,7 +107,7 @@ func main() {
 	if !ok {
 		apiURL = defaultTailscaleAPIURL
 	}
-	tsUpdater, err := tailscaleupdater.NewTailscaleAdvertisementUpdater(targetNamespaces, apiURL)
+	tsUpdater, err := tailscaleupdater.New(targetNamespaces, apiURL)
 
 	additionalRoutes, ok := os.LookupEnv("OBSERVER_ADDITIONAL_ROUTES")
 	if ok {

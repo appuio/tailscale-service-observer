@@ -14,6 +14,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// TailscaleAdvertisementUpdater keeps track of the routes which are
+// advertised through the Tailscale client.
 type TailscaleAdvertisementUpdater struct {
 	URL    string
 	routes map[string]struct{}
@@ -138,12 +140,12 @@ func (t *TailscaleAdvertisementUpdater) updateRoute(oldip string, newip string) 
 // addRoute adds route for ip to internal state, returns true if
 // advertisements need to be updated
 func (t *TailscaleAdvertisementUpdater) addRoute(ip string) bool {
-	new_route := ip + "/32"
-	if _, ok := t.routes[new_route]; ok {
+	newRoute := ip + "/32"
+	if _, ok := t.routes[newRoute]; ok {
 		return false
 	}
-	t.logger.Info("adding", "route", new_route)
-	t.routes[new_route] = struct{}{}
+	t.logger.Info("adding", "route", newRoute)
+	t.routes[newRoute] = struct{}{}
 	return true
 }
 
@@ -163,7 +165,7 @@ func (t *TailscaleAdvertisementUpdater) removeRoute(ip string) bool {
 // routeAdvertisements to the Tailscale API
 func (t *TailscaleAdvertisementUpdater) post() error {
 	routes := []string{}
-	for r, _ := range t.routes {
+	for r := range t.routes {
 		routes = append(routes, r)
 	}
 	payload := struct {

@@ -1,11 +1,11 @@
 # tailscale-service-observer
 
-[![Build](https://img.shields.io/github/workflow/status/vshn/go-bootstrap/Test)][build]
-![Go version](https://img.shields.io/github/go-mod/go-version/vshn/go-bootstrap)
-[![Version](https://img.shields.io/github/v/release/vshn/go-bootstrap)][releases]
-[![Maintainability](https://img.shields.io/codeclimate/maintainability/vshn/go-bootstrap)][codeclimate]
-[![Coverage](https://img.shields.io/codeclimate/coverage/vshn/go-bootstrap)][codeclimate]
-[![GitHub downloads](https://img.shields.io/github/downloads/vshn/go-bootstrap/total)][releases]
+[![Build](https://img.shields.io/github/workflow/status/appuio/tailscale-service-observer/Test)][build]
+![Go version](https://img.shields.io/github/go-mod/go-version/appuio/tailscale-service-observer)
+[![Version](https://img.shields.io/github/v/release/appuio/tailscale-service-observer)][releases]
+[![Maintainability](https://img.shields.io/codeclimate/maintainability/appuio/tailscale-service-observer)][codeclimate]
+[![Coverage](https://img.shields.io/codeclimate/coverage/appuio/tailscale-service-observer)][codeclimate]
+[![GitHub downloads](https://img.shields.io/github/downloads/appuio/tailscale-service-observer/total)][releases]
 
 [build]: https://github.com/vshn/go-bootstrap/actions?query=workflow%3ATest
 [releases]: https://github.com/vshn/go-bootstrap/releases

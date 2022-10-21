@@ -17,7 +17,8 @@ Tailscale service observer is a Go tool which watches Kubernetes services in a s
 
 The observer expects to run in a context with a working Kubernetes configuration (either via kubeconfig file or in-cluster).
 
-The environment variable `TARGET_NAMESPACE` must be set to the namespace in which the observer should watch services.
+The environment variable `TARGET_NAMESPACE` must be set to the namespace(s) in which the observer should watch services.
+You can specify multiple namespaces separated by commas.
 The environment variable `TAILSCALE_API_URL` can be used to provide a custom URL for the Tailscale client's HTTP API.
 By default, the observer expects the API to be reachable at `http://localhost:8088`.
 

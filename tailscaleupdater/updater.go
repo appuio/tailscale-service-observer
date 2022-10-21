@@ -56,6 +56,13 @@ func (t *TailscaleAdvertisementUpdater) SetupInformer(informerFactory informers.
 	return servicesInformer
 }
 
+func (t *TailscaleAdvertisementUpdater) AddRoute(route string) error {
+	if t.addRoute(route) {
+		return t.post()
+	}
+	return nil
+}
+
 func (t *TailscaleAdvertisementUpdater) informerAddHandler(obj interface{}) {
 	svc, ok := obj.(*corev1.Service)
 	if !ok {
@@ -109,7 +116,7 @@ func (t *TailscaleAdvertisementUpdater) informerDeleteHandler(obj interface{}) {
 // ensureRouteForIP registers a /32 route for the provided ip if it doesn't
 // exist in the updater, and posts the new advertisments to the tailscale API.
 func (t *TailscaleAdvertisementUpdater) ensureRouteForIP(ip string) error {
-	if t.addRoute(ip) {
+	if t.addRouteForIP(ip) {
 		return t.post()
 	}
 	return nil
@@ -130,22 +137,28 @@ func (t *TailscaleAdvertisementUpdater) removeRouteForIP(ip string) error {
 // advertisements if the internal state changed
 func (t *TailscaleAdvertisementUpdater) updateRoute(oldip string, newip string) error {
 	removed := t.removeRoute(oldip)
-	added := t.addRoute(newip)
+	added := t.addRouteForIP(newip)
 	if removed || added {
 		return t.post()
 	}
 	return nil
 }
 
-// addRoute adds route for ip to internal state, returns true if
+// addRouteForIP adds route for ip to internal state, returns true if
 // advertisements need to be updated
-func (t *TailscaleAdvertisementUpdater) addRoute(ip string) bool {
+func (t *TailscaleAdvertisementUpdater) addRouteForIP(ip string) bool {
 	newRoute := ip + "/32"
-	if _, ok := t.routes[newRoute]; ok {
+	return t.addRoute(newRoute)
+}
+
+// addRoute adds a route to the internal state, returns true if
+// advertisements need to be updated
+func (t *TailscaleAdvertisementUpdater) addRoute(route string) bool {
+	if _, ok := t.routes[route]; ok {
 		return false
 	}
-	t.logger.Info("adding", "route", newRoute)
-	t.routes[newRoute] = struct{}{}
+	t.logger.Info("adding", "route", route)
+	t.routes[route] = struct{}{}
 	return true
 }
 

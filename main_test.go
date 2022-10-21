@@ -6,11 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_parseNamespaces(t *testing.T) {
+func Test_parseEnv(t *testing.T) {
 	tcases := []struct {
 		raw      string
 		expected []string
 	}{
+		{raw: "", expected: []string{}},
 		{raw: "foo", expected: []string{"foo"}},
 		{raw: "foo,", expected: []string{"foo"}},
 		{raw: ", foo, ", expected: []string{"foo"}},
@@ -20,7 +21,7 @@ func Test_parseNamespaces(t *testing.T) {
 	}
 
 	for _, tc := range tcases {
-		parsed := parseNamespaces(tc.raw)
+		parsed := parseEnv(tc.raw)
 		assert.Equal(t, tc.expected, parsed)
 	}
 }
